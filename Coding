@@ -1,0 +1,291 @@
+//# Smart-Alarm-Clock
+#include <LiquidCrystal.h>
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+
+int sec,min,hr,AP1;
+int sec2,min2,hr2,AP2;
+int k=0;
+int PushButton = 0;
+const int buzzer = 9;
+int sensePin = A1;
+int sensorInput;
+double temp;
+
+
+
+byte clk_arms[8] = {
+  0b00000, 0b00100, 0b01110, 0b01110,
+  0b10001, 0b10101, 0b10001, 0b01110
+};
+
+void setup()
+{
+ Serial.begin(9600);
+ lcd.begin(16,2);
+ lcd.createChar(0, clk_arms);
+ pinMode(8,INPUT);   //push button dismiss
+ pinMode(9, OUTPUT); //buzzer
+ lcd.print("Temp:");
+ lcd.setCursor(0, 1);
+}
+
+void line()//line() - inserts blank line into serial monitor to separate data
+{
+  Serial.println("");
+}
+
+//Time details
+void clockDetails()
+{
+  Serial.println("Enter current hour:");
+  while(Serial.available() == 0);
+  hr=Serial.parseInt();
+  Serial.println(hr);
+  line(); //line() - inserts blank line into serial monitor to separate data
+  Serial.println("Enter current minute:");
+  while(Serial.available()==0);
+  min=Serial.parseInt();
+  Serial.println(min);
+  line();
+  Serial.println("Enter current second:");
+  while(Serial.available()==0);
+  sec=Serial.parseInt();
+  Serial.println(sec);
+  line();
+  Serial.println("Enter AM(0) or PM(1)");
+  while(Serial.available()==0);
+  AP1=Serial.parseInt();
+  Serial.println(AP1);
+  line();
+  k=k+1;
+}
+
+//Alarm Details
+void alarmDetails()
+{
+  Serial.println("Enter hour:");
+  while(Serial.available() == 0);
+  hr2=Serial.parseInt();
+  Serial.println(hr2);
+  line();    //line() - inserts blank line into serial monitor to separate data
+  Serial.println("Enter minute:");
+  while(Serial.available()==0);
+  min2=Serial.parseInt();
+  Serial.println(min2);
+  line();
+  Serial.println("Enter AM(0) or PM(1)");
+  while(Serial.available()==0);
+  AP2=Serial.parseInt();
+  Serial.println(AP2);
+  line();
+  k=k+1;
+}
+
+//Print Time 
+void printTime(int x)
+{
+  if(x<=9)
+  {
+  lcd.print("0");lcd.print(x);
+  }
+  else
+  {
+  lcd.print(x);
+  }
+}
+void printclockTime()
+{
+  lcd.setCursor(0,0);
+  //printTime - places "0" in front of single digit numbers
+  printTime(hr); lcd.print(":");
+  printTime(min); lcd.print(":");
+  printTime(sec); lcd.print(" ");
+  if(AP1%2==0)   //if AP is odd, it reads AM
+  {lcd.print("AM");}
+  if(AP1%2==1)   //if AP is even, it reads PM
+  {lcd.print("PM");}
+  lcd.setCursor(0,1);
+  delay(1000);
+} 
+
+//Print alarm
+void printalarmTime()
+{
+  lcd.setCursor(1,1);
+  lcd.write((byte)0);
+  lcd.setCursor(3,1);
+  printTime(hr2); lcd.print(":");
+  printTime(min2); lcd.print(" ");
+  if(AP2%2==0)   //if AP is odd, it reads AM
+  {lcd.print("AM");}
+  if(AP2%2==1)   //if AP is even, it reads PM
+  {lcd.print("PM");}
+}
+
+void loop()
+{
+
+  //temperature
+  sensorInput = analogRead(A1);
+  temp = (double)sensorInput/1024;//find the voltage of the input reading
+  temp = temp*5; //multiply by 5 to get the voltage
+  temp = temp-0.5;//subtract the offset
+  temp = temp*100; // convert to degrees
+  lcd.setCursor(13,0);
+  lcd.print(temp);
+  lcd.print("C");
+  if(temp>=14)
+  { lcd.command(0x18);
+  }
+  delay(90);
+
+ 
+  //Set time
+  if(k<=0) 
+  {
+  Serial.println("Set clock time");
+  clockDetails();   //clockDetails() - Asks for clock time
+  }
+  sec=sec+1;
+  if(sec==60)
+  {
+  sec=0;
+  min=min+1;
+  if(min==60)
+  {
+   min=0;
+   hr=hr+1;
+   if(hr==12)
+   {
+   AP1=AP1+1;
+   printclockTime();
+   }
+   if(hr==13)
+   {
+   hr=1;
+   }
+   }
+  }
+
+  //Set Alarm
+  if(k<=1)
+  {
+  Serial.println("Set alarm time");
+  alarmDetails();   //alarmDetails() - Asks for alarm time
+  }
+  printclockTime();   //printclockTime - adds one second and displays time on LCD display
+  printalarmTime();   //printalarmTime() - prints the alarm time on LCD display
+
+  
+  while(hr==hr2 && min==min2)
+  {
+    lcd.clear();
+    lcd.setCursor(2,1);
+    lcd.print("Its Time!!!");
+    printclockTime();
+    sec=sec+1;
+    if(sec==60)
+  	{
+    sec=0;
+    min=min+1;
+    if(min==60)
+    {
+    min=0;
+    hr=hr+1;
+    }
+    }
+    
+//Buzzer
+  tone(9, 262, 100); // play tone 48 (C4 = 262 Hz)
+  delay(400); // Wait for 400 millisecond(s)
+  tone(9, 262, 100); // play tone 48 (C4 = 262 Hz)
+  delay(400); // Wait for 400 millisecond(s)
+  tone(9, 262, 100); // play tone 48 (C4 = 262 Hz)
+  delay(400); // Wait for 400 millisecond(s)
+  tone(9, 294, 100); // play tone 50 (D4 = 294 Hz)
+  delay(200); // Wait for 200 millisecond(s)
+  tone(9, 330, 100); // play tone 52 (E4 = 330 Hz)
+  delay(400); // Wait for 400 millisecond(s)
+  tone(9, 330, 100); // play tone 52 (E4 = 330 Hz)
+  delay(300); // Wait for 300 millisecond(s)
+  tone(9, 294, 100); // play tone 50 (D4 = 294 Hz)
+  delay(200); // Wait for 200 millisecond(s)
+  tone(9, 330, 100); // play tone 52 (E4 = 330 Hz)
+  delay(300); // Wait for 300 millisecond(s)
+  tone(9, 349, 100); // play tone 53 (F4 = 349 Hz)
+  delay(200); // Wait for 200 millisecond(s)
+  tone(9, 392, 100); // play tone 55 (G4 = 392 Hz)
+  delay(700); // Wait for 700 millisecond(s)
+  tone(9, 523, 100); // play tone 60 (C5 = 523 Hz)
+  delay(200); // Wait for 200 millisecond(s)
+  tone(9, 523, 100); // play tone 60 (C5 = 523 Hz)
+  delay(200); // Wait for 200 millisecond(s)
+  tone(9, 523, 100); // play tone 60 (C5 = 523 Hz)
+  delay(200); // Wait for 200 millisecond(s)
+  tone(9, 392, 100); // play tone 55 (G4 = 392 Hz)
+  delay(200); // Wait for 200 millisecond(s)
+  tone(9, 392, 100); // play tone 55 (G4 = 392 Hz)
+  delay(200); // Wait for 200 millisecond(s)
+  tone(9, 392, 100); // play tone 55 (G4 = 392 Hz)
+  delay(200); // Wait for 200 millisecond(s)
+  tone(9, 330, 100); // play tone 52 (E4 = 330 Hz)
+  delay(200); // Wait for 200 millisecond(s)
+  tone(9, 330, 100); // play tone 52 (E4 = 330 Hz)
+  delay(200); // Wait for 200 millisecond(s)
+  tone(9, 330, 100); // play tone 52 (E4 = 330 Hz)
+  delay(200); // Wait for 200 millisecond(s)
+  tone(9, 262, 100); // play tone 48 (C4 = 262 Hz)
+  delay(200); // Wait for 200 millisecond(s)
+  tone(9, 262, 100); // play tone 48 (C4 = 262 Hz)
+  delay(200); // Wait for 200 millisecond(s)
+  tone(9, 262, 100); // play tone 48 (C4 = 262 Hz)
+  delay(200); // Wait for 200 millisecond(s)
+  tone(9, 392, 100); // play tone 55 (G4 = 392 Hz)
+  delay(300); // Wait for 300 millisecond(s)
+  tone(9, 349, 100); // play tone 53 (F4 = 349 Hz)
+  delay(200); // Wait for 200 millisecond(s)
+  tone(9, 330, 100); // play tone 52 (E4 = 330 Hz)
+  delay(300); // Wait for 300 millisecond(s)
+  tone(9, 294, 100); // play tone 50 (D4 = 294 Hz)
+  delay(200); // Wait for 200 millisecond(s)
+  tone(9, 262, 100); // play tone 48 (C4 = 262 Hz)
+  delay(700); // Wait for 700 millisecond(s)  
+   
+//PushBotton
+    PushButton = digitalRead(8);
+    if(PushButton == HIGH)
+      Serial.println("Dismiss");
+    
+    if (PushButton == HIGH)
+    {
+          {
+            noTone(buzzer);
+        	hr2=0;
+      		min2=0;
+      		lcd.clear();
+            printclockTime();
+        	lcd.setCursor(2,1);
+        	lcd.print("Alarm off");
+          }
+        }
+      while (PushButton == HIGH)
+      {
+      	noTone(buzzer);
+        hr2=0;
+      	min2=0;
+      	lcd.clear();
+      	sec=sec+1;
+      	if(sec==60)
+  	    {
+          sec=0;
+      	  min=min+1;
+      	  if(min==60)
+      	  {
+          	min=0;
+      	  	hr=hr+1;
+      	  }
+        }
+
+      }
+    }
+  }
